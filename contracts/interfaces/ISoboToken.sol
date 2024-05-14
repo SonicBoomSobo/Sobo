@@ -9,6 +9,5 @@ contract ISoboToken {
     error SoboToken__WftmTokenNotSet();
 
     event SoboToken__LiquidityAdded(bool liquidityAdded);
-
     event SoboToken__PairAddressSet(address pairAddress);
 }

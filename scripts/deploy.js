@@ -226,7 +226,7 @@ async function main() {
 
   await setLiquidityAdded();
 
-  await renounceOwnership();
+  // await renounceOwnership();
 
   // Test limits are in effect.. 
   if (testnet) {
@@ -251,6 +251,12 @@ async function main() {
       ? "\n***[FAIL] Test swap of >1% unexpectedly passed***\n"
       : "\n***[SUCCESS] Test swap of >1% failed correctly***\n";
     console.log(swapResultFail);
+
+    // burn some tokens
+    const burnAmount = hre.ethers.parseUnits("100", "ether");
+    const burnResult = await sobo.burn(burnAmount);
+    await burnResult.wait();
+    console.log(`Burned ${burnAmount} tokens`);
   }
 }
 

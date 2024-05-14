@@ -39,6 +39,7 @@ abstract contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
 
     string private _name;
     string private _symbol;
+    address private soboBurnAddress = 0x00000000000000000000000000000000000050b0;
 
     /**
      * @dev Sets the values for {name} and {symbol}.
@@ -200,7 +201,7 @@ abstract contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
             }
         }
 
-        if (to == address(0)) {
+        if (to == soboBurnAddress) {
             unchecked {
                 // Overflow not possible: value <= totalSupply or value <= fromBalance <= totalSupply.
                 _totalSupply -= value;
@@ -242,7 +243,7 @@ abstract contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
         if (account == address(0)) {
             revert ERC20InvalidSender(address(0));
         }
-        _update(account, address(0), value);
+        _update(account, soboBurnAddress, value);
     }
 
     /**
