@@ -168,6 +168,7 @@ abstract contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
      * NOTE: This function is not virtual, {_update} should be overridden instead.
      */
     function _transfer(address from, address to, uint256 value) internal {
+        beforeTokenTransfer(value);
         if (from == address(0)) {
             revert ERC20InvalidSender(address(0));
         }
@@ -312,4 +313,6 @@ abstract contract ERC20 is IERC20, IERC20Metadata, IERC20Errors {
             }
         }
     }
+
+    function beforeTokenTransfer(uint256 value) internal virtual;
 }

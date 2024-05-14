@@ -4,6 +4,7 @@ const testnetRouterAddress = "0xa6AD18C2aC47803E193F75c3677b14BF19B94883"
 const testnetFactoryAddress = "0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741"
 let testnetWftmAddress = "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
 let soboAddress = "0x0000000000000000000000000000000000000000"
+let wftm;
 
 const testnet = true
 
@@ -11,7 +12,7 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners()
   if (testnet) {
     //  Deploy Mock WFTM
-    const wftm = await hre.ethers.deployContract('MockWFTM', [])
+    wftm = await hre.ethers.deployContract('MockWFTM', [])
     const wftmDeployed = await wftm.deploymentTransaction().wait(1);
     testnetWftmAddress = wftmDeployed.contractAddress
         console.log('WFTM deployed to:', testnetWftmAddress)
@@ -19,7 +20,7 @@ async function main() {
 
   // Deploy SOBO
   const sobo = await hre.ethers.deployContract('SoboToken', [testnetFactoryAddress, testnetWftmAddress])
-  const soboDeployed = await sobo.deploymentTransaction().wait(5)
+  const soboDeployed = await sobo.deploymentTransaction().wait(1)
   soboAddress = soboDeployed.contractAddress
 
   console.log('SOBO deployed to:', soboAddress)
@@ -29,17 +30,33 @@ async function main() {
   //   constructorArguments: [testnetFactoryAddress, testnetWftmAddress]
   // })
 
+  // console.log(`SOBO Verified: ${soboAddress}`)
+
   // Approve router to spend tokens
   const totalSupply = await sobo.totalSupply()
   const liquiditySoboAmount = totalSupply * BigInt(85) / BigInt(100); // 85% of total supply // 85% of total supply
-  await sobo.approve(testnetRouterAddress, liquiditySoboAmount)
+  const wftmAmount = hre.ethers.parseUnits('100000', 'ether') // 100,000 wFTM
+  
+  console.log(`Liquidity SOBO: ${liquiditySoboAmount}`)
+  console.log(`Liquidity SOBO: ${wftmAmount}`)
+
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 20 // 20 minutes from the current Unix time
+  const soboApproved = await sobo.approve(testnetRouterAddress, liquiditySoboAmount)
+  await soboApproved.wait()
+  const wftmApproved = await wftm.approve(testnetRouterAddress, wftmAmount)
+  await wftmApproved.wait()
+
+  const wftmAllowance = await wftm.allowance(deployer.address, testnetRouterAddress)
+  const soboAllowance = await sobo.allowance(deployer.address, testnetRouterAddress)
+  
+  console.log(`Check router Allowance WFTM: ${wftmAllowance}`)
+  console.log(`Check router Allowance SOBO: ${soboAllowance}`)
+  console.log(`Router Approved: ${testnetRouterAddress} : ${soboAllowance == liquiditySoboAmount && wftmAllowance == wftmAmount}`)
 
   // Get router contract
-  const router = await hre.ethers.getContractAt('IUniswapV2Router', testnetRouterAddress, deployer)
+  const router = await hre.ethers.getContractAt('IUniswapV2Router', testnetRouterAddress)
 
   // Add Liquidity
-  const wftmAmount = hre.ethers.parseUnits('100000', 'ether') // 100,000 wFTM
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20 // 20 minutes from the current Unix time
   await router.addLiquidity(
     soboAddress,
     testnetWftmAddress,
@@ -85,6 +102,7 @@ async function main() {
   } catch (error) {
     console.log('Test swap of >1% correctly failed:', error)
   }
+
 }
 
 
