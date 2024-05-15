@@ -1,10 +1,19 @@
 const hre = require("hardhat");
 
-const testnetRouterAddress = "0xa6AD18C2aC47803E193F75c3677b14BF19B94883";
-const testnetFactoryAddress = "0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741";
+// testnet
+// const ftmRouterAddress = "0xa6AD18C2aC47803E193F75c3677b14BF19B94883";
+// const ftmFactoryAddress = "0xEE4bC42157cf65291Ba2FE839AE127e3Cc76f741";
+
+// Mainnet Uniswap V2
+const spookyLiquidityBrewer = "0x31F63A33141fFee63D4B26755430a390ACdD8a4d";
+const ftmRouterAddress = "0xf491e7b69e4244ad4002bc14e878a34207e38c29";
+const ftmFactoryAddress = "0x152ee697f2e276fa89e96742e9bb9ab1f2e61be3";
+
+const routerForContract = ftmRouterAddress; // spookyLiquidityBrewer;
+
 let deployer;
 let deployerAddress;
-let testnetWftmAddress = "0xf1277d1Ed8AD466beddF92ef448A132661956621";
+let ftmWftmAddress = "0xf1277d1Ed8AD466beddF92ef448A132661956621";
 let soboAddress = "0x0000000000000000000000000000000000000000";
 let totalSupply = 0;
 let liquiditySoboAmount = 0;
@@ -22,7 +31,7 @@ const testnet = true;
 async function getRouterAndFactory() {
   router = await hre.ethers.getContractAt(
     "IUniswapV2Router",
-    testnetRouterAddress
+    ftmRouterAddress
   );
   const factoryAddress = await router.factory();
   factory = await hre.ethers.getContractAt("IUniswapV2Factory", factoryAddress);
@@ -31,15 +40,15 @@ async function getRouterAndFactory() {
 async function deployMockWFTM() {
   wftm = await hre.ethers.deployContract("MockWFTM", []);
   const wftmDeployed = await wftm.deploymentTransaction().wait();
-  testnetWftmAddress = wftmDeployed.contractAddress;
-  console.log("WFTM deployed to:", testnetWftmAddress);
+  ftmWftmAddress = wftmDeployed.contractAddress;
+  console.log("WFTM deployed to:", ftmWftmAddress);
 }
 
 async function deploySoboToken(wait = 5) {
   sobo = await hre.ethers.deployContract("SoboToken", [
-    testnetFactoryAddress,
-    testnetRouterAddress,
-    testnetWftmAddress,
+    ftmFactoryAddress,
+    routerForContract,
+    ftmWftmAddress,
   ]);
   const soboDeployed = await sobo.deploymentTransaction().wait(wait);
   soboAddress = soboDeployed.contractAddress;
@@ -48,18 +57,18 @@ async function deploySoboToken(wait = 5) {
   const soboFactoryAddress = await sobo.uniswapFactory();
   const soboRouterAddress = await sobo.uniswapRouter();
   console.log(`soboWftmAddress: ${soboWftmAddress}`);
-  console.log(`factory: ${soboFactoryAddress === testnetFactoryAddress}`);
-  console.log(`router: ${soboRouterAddress === testnetRouterAddress}`);
-  console.log(`wftm: ${soboWftmAddress === testnetWftmAddress}`);
+  console.log(`factory: ${soboFactoryAddress === ftmFactoryAddress}`);
+  console.log(`router: ${soboRouterAddress === ftmRouterAddress}`);
+  console.log(`wftm: ${soboWftmAddress === ftmWftmAddress}`);
 }
 
 async function verifyContract() {
   await hre.run(`verify:verify`, {
     address: soboAddress,
     constructorArguments: [
-      testnetFactoryAddress,
-      testnetRouterAddress,
-      testnetWftmAddress,
+      ftmFactoryAddress,
+      routerForContract,
+      ftmWftmAddress,
     ],
   });
 }
@@ -74,20 +83,20 @@ async function approveTokens(deployer) {
   console.log(`Liquidity SOBO: ${wftmAmount}`);
 
   const soboApproved = await sobo.approve(
-    testnetRouterAddress,
+    ftmRouterAddress,
     liquiditySoboAmount
   );
   await soboApproved.wait();
-  const wftmApproved = await wftm.approve(testnetRouterAddress, wftmAmount);
+  const wftmApproved = await wftm.approve(ftmRouterAddress, wftmAmount);
   await wftmApproved.wait();
 
   const wftmAllowance = await wftm.allowance(
     deployerAddress,
-    testnetRouterAddress
+    ftmRouterAddress
   );
   const soboAllowance = await sobo.allowance(
     deployerAddress,
-    testnetRouterAddress
+    ftmRouterAddress
   );
 
   const soboBalance = await sobo.balanceOf(deployerAddress);
@@ -99,7 +108,7 @@ async function approveTokens(deployer) {
   console.log(`Check router Allowance WFTM: ${wftmAllowance}`);
   console.log(`Check router Allowance SOBO: ${soboAllowance}`);
   console.log(
-    `Router Approved: ${testnetRouterAddress} : ${
+    `Router Approved: ${ftmRouterAddress} : ${
       soboAllowance == liquiditySoboAmount && wftmAllowance == wftmAmount
     }`
   );
@@ -109,7 +118,7 @@ async function addLiquidity() {
   // Add Liquidity
   const liquidityAdded = await router.addLiquidity(
     soboAddress,
-    testnetWftmAddress,
+    ftmWftmAddress,
     liquiditySoboAmount,
     wftmAmount,
     0, // min liquidity tokens
@@ -136,7 +145,7 @@ async function renounceOwnership() {
 }
 
 async function checkReserves() {
-  const pairAddress = await factory.getPair(soboAddress, testnetWftmAddress);
+  const pairAddress = await factory.getPair(soboAddress, ftmWftmAddress);
 
   if (pairAddress === "0x0000000000000000000000000000000000000000") {
     console.log("No pair address found.");
@@ -177,7 +186,7 @@ async function testSwap(swapAmount) {
       await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
         swapAmount,
         0, // minimum amount out
-        [soboAddress, testnetWftmAddress],
+        [soboAddress, ftmWftmAddress],
         deployerAddress,
         deadline
       );
@@ -218,7 +227,7 @@ async function main() {
   }
 
   await deploySoboToken(wait);
-  await verifyContract();
+  // await verifyContract();
 
   await approveTokens(deployer);
 
